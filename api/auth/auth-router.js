@@ -1,8 +1,21 @@
 const router = require("express").Router();
-const { checkUsernameExists, validateRoleName } = require('./auth-middleware');
+const bcrypt = require("bcryptjs");
+const { checkUsernameExists, validateRoleName } = require("./auth-middleware");
 const { JWT_SECRET } = require("../secrets"); // use this secret!
+const Users = require("../users/users-model");
 
-router.post("/register", validateRoleName, (req, res, next) => {
+router.post("/register", validateRoleName, async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const rounds = process.env.BCRYPT_ROUNDS || 8;
+    const hash = bcrypt.hashSync(password, rounds);
+    const user = { username, password: hash, role_name: req.role_name };
+    const newUser = await Users.add(user);
+    res.status(201).json(newUser[0]);
+  } catch (err) {
+    next(err);
+  }
+
   /**
     [POST] /api/auth/register { "username": "anna", "password": "1234", "role_name": "angel" }
 
@@ -15,7 +28,6 @@ router.post("/register", validateRoleName, (req, res, next) => {
     }
    */
 });
-
 
 router.post("/login", checkUsernameExists, (req, res, next) => {
   /**
